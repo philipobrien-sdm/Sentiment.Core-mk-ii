@@ -1,0 +1,8 @@
+{
+  "name": "Remix Comment Vector Intelligence Hub v2",
+  "description": "Interactive CSV comment analysis application utilizing vector embeddings for 2D similarity mapping, sentiment breakdown, duplicate review, and automated executive summarization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
