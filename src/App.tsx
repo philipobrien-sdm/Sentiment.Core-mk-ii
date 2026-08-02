@@ -190,15 +190,43 @@ export default function App() {
   const [isDocumentContextModalOpen, setIsDocumentContextModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    localStorage.setItem("document_sections", JSON.stringify(documentSections));
+    try {
+      localStorage.setItem("document_sections", JSON.stringify(documentSections));
+    } catch (e) {
+      console.warn("Failed to persist document_sections to localStorage:", e);
+    }
   }, [documentSections]);
 
   useEffect(() => {
-    localStorage.setItem("supporting_doc_items", JSON.stringify(supportingItems));
+    try {
+      // Strip embedding arrays when saving to localStorage to prevent QuotaExceededError (embeddings are computed on demand)
+      const sanitizedItems = supportingItems.map(({ embedding, ...rest }) => rest);
+      localStorage.setItem("supporting_doc_items", JSON.stringify(sanitizedItems));
+    } catch (e) {
+      console.warn("Failed to persist supporting_doc_items to localStorage:", e);
+    }
   }, [supportingItems]);
 
   useEffect(() => {
-    localStorage.setItem("library_documents", JSON.stringify(libraryDocuments));
+    try {
+      localStorage.setItem("library_documents", JSON.stringify(libraryDocuments));
+    } catch (e) {
+      console.warn("Failed to persist full library_documents to localStorage:", e);
+      // Fallback: Store lightweight version of records if localStorage quota is reached
+      try {
+        const lightweightDocs = libraryDocuments.map((doc) => ({
+          ...doc,
+          record: {
+            metadata: doc.record.metadata,
+            executiveSummary: doc.record.executiveSummary,
+            documentSections: doc.record.documentSections?.slice(0, 10) || [],
+          }
+        }));
+        localStorage.setItem("library_documents", JSON.stringify(lightweightDocs));
+      } catch (err2) {
+        console.warn("Failed to persist lightweight library_documents:", err2);
+      }
+    }
   }, [libraryDocuments]);
 
   useEffect(() => {

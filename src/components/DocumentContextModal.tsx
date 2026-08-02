@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { DocumentSection, CommentItem, SupportingDocContextItem, IngestedLibraryDocument, DocFlag } from "../types";
 import {
   FileText,
@@ -255,6 +255,12 @@ export const DocumentContextModal: React.FC<DocumentContextModalProps> = ({
 
   // Counts & Filters for Supporting Items
   const [itemFilterFlag, setItemFilterFlag] = useState<string>("all");
+  const [displayLimit, setDisplayLimit] = useState<number>(80);
+
+  useEffect(() => {
+    setDisplayLimit(80);
+  }, [itemFilterFlag, searchQuery]);
+
   const filteredSupportingItems = useMemo(() => {
     return supportingItems.filter((i) => {
       const matchesFlag = itemFilterFlag === "all" || i.flag === itemFilterFlag;
@@ -265,6 +271,10 @@ export const DocumentContextModal: React.FC<DocumentContextModalProps> = ({
       return matchesFlag && matchesSearch;
     });
   }, [supportingItems, itemFilterFlag, searchQuery]);
+
+  const visibleSupportingItems = useMemo(() => {
+    return filteredSupportingItems.slice(0, displayLimit);
+  }, [filteredSupportingItems, displayLimit]);
 
   // Handle manual item add
   const handleAddManualItem = () => {
@@ -642,63 +652,87 @@ export const DocumentContextModal: React.FC<DocumentContextModalProps> = ({
                   </p>
                 </div>
               ) : (
-                filteredSupportingItems.map((item) => {
-                  const isActive = item.isActive !== false;
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-3.5 flex items-start justify-between gap-4 transition-colors ${
-                        isActive ? "bg-white hover:bg-[#FAF9F6]" : "bg-gray-50/70 opacity-60"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <button
-                          onClick={() => handleToggleItemActive(item.id)}
-                          className="mt-0.5 text-gray-400 hover:text-[#1A1A1A] cursor-pointer"
-                          title={isActive ? "Disable from RAG Vector Matching" : "Enable for RAG Vector Matching"}
-                        >
-                          {isActive ? (
-                            <CheckSquare className="w-4 h-4 text-emerald-600" />
-                          ) : (
-                            <Square className="w-4 h-4 text-gray-300" />
-                          )}
-                        </button>
-
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-[#1A1A1A] truncate">{item.source}</span>
-                            <span
-                              className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border ${
-                                item.flag === 'Constraint'
-                                  ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                  : item.flag === 'Assertion'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                  : item.flag === 'Assumption'
-                                  ? 'bg-blue-50 text-blue-800 border-blue-200'
-                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              }`}
-                            >
-                              {item.flag}
-                            </span>
-                            {item.citations?.[0]?.pageNumber && (
-                              <span className="text-[10px] font-mono text-gray-400">Page {item.citations[0].pageNumber}</span>
-                            )}
-                          </div>
-
-                          <p className="text-xs text-[#1A1A1A] font-serif leading-relaxed">{item.content}</p>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="p-1 text-gray-400 hover:text-rose-700 transition-colors cursor-pointer"
-                        title="Delete Item"
+                <>
+                  {visibleSupportingItems.map((item) => {
+                    const isActive = item.isActive !== false;
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3.5 flex items-start justify-between gap-4 transition-colors ${
+                          isActive ? "bg-white hover:bg-[#FAF9F6]" : "bg-gray-50/70 opacity-60"
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <button
+                            onClick={() => handleToggleItemActive(item.id)}
+                            className="mt-0.5 text-gray-400 hover:text-[#1A1A1A] cursor-pointer"
+                            title={isActive ? "Disable from RAG Vector Matching" : "Enable for RAG Vector Matching"}
+                          >
+                            {isActive ? (
+                              <CheckSquare className="w-4 h-4 text-emerald-600" />
+                            ) : (
+                              <Square className="w-4 h-4 text-gray-300" />
+                            )}
+                          </button>
+
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-[#1A1A1A] truncate">{item.source}</span>
+                              <span
+                                className={`px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border ${
+                                  item.flag === 'Constraint'
+                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                    : item.flag === 'Assertion'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : item.flag === 'Assumption'
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                }`}
+                              >
+                                {item.flag}
+                              </span>
+                              {item.citations?.[0]?.pageNumber && (
+                                <span className="text-[10px] font-mono text-gray-400">Page {item.citations[0].pageNumber}</span>
+                              )}
+                            </div>
+
+                            <p className="text-xs text-[#1A1A1A] font-serif leading-relaxed">{item.content}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="p-1 text-gray-400 hover:text-rose-700 transition-colors cursor-pointer shrink-0"
+                          title="Delete Item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {filteredSupportingItems.length > visibleSupportingItems.length && (
+                    <div className="p-4 bg-[#FAF9F6] text-center font-mono text-xs flex items-center justify-between gap-3 flex-wrap border-t border-[#E5E3DF]">
+                      <span className="text-gray-600">
+                        Showing <strong className="text-[#1A1A1A]">{visibleSupportingItems.length}</strong> of <strong className="text-[#1A1A1A]">{filteredSupportingItems.length}</strong> items
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setDisplayLimit((prev) => prev + 100)}
+                          className="px-3 py-1.5 bg-white hover:bg-gray-100 border border-[#E5E3DF] text-xs font-bold text-[#1A1A1A] cursor-pointer transition-colors"
+                        >
+                          Show More (+100)
+                        </button>
+                        <button
+                          onClick={() => setDisplayLimit(filteredSupportingItems.length)}
+                          className="px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#2A2A2A] text-white text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          Show All ({filteredSupportingItems.length})
+                        </button>
+                      </div>
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
 

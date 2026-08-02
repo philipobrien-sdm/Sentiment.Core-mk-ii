@@ -229,7 +229,7 @@ export function ingestDocumentExtractionRecordJSON(
   const rawRecords: DocumentExtractionRecord[] = Array.isArray(parsed) ? parsed : [parsed];
 
   const updatedDocs = [...existingDocs];
-  const updatedItems = [...existingItems];
+  let updatedItems = [...existingItems];
   let countAdded = 0;
 
   rawRecords.forEach((rec, recIdx) => {
@@ -254,7 +254,13 @@ export function ingestDocumentExtractionRecordJSON(
     const fname = meta.fileName || "Imported_Doc";
 
     // Helper to format citation string
-    const formatCitationSource = (cit?: { pageNumber?: number; sectionHeader?: string }) => {
+    const formatCitationSource = (citInput?: any) => {
+      let cit: { pageNumber?: number; sectionHeader?: string } | undefined;
+      if (Array.isArray(citInput)) {
+        cit = citInput[0];
+      } else if (citInput && typeof citInput === "object") {
+        cit = citInput;
+      }
       let pageStr = cit?.pageNumber ? ` (Page ${cit.pageNumber})` : "";
       if (cit?.sectionHeader) pageStr += ` [${cit.sectionHeader}]`;
       return `${fname}${pageStr}`;
@@ -262,120 +268,159 @@ export function ingestDocumentExtractionRecordJSON(
 
     // 1. Assertions
     if (Array.isArray(rec.assertions)) {
-      rec.assertions.forEach((art, idx) => {
-        const source = formatCitationSource(art.citations?.[0]);
-        const content = `${art.statement}${art.assertedBy ? ` [Asserted by: ${art.assertedBy}]` : ""}`;
-        extractedFromRec.push({
-          id: `item_assertion_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "Assertion",
-          content,
-          isActive: true,
-          category: "Assertion",
-          citations: art.citations,
-          embedding: getDeterministicPseudoEmbedding(`${source} Assertion ${content}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.assertions.forEach((art: any, idx: number) => {
+        const source = formatCitationSource(art.citations);
+        const content = `${art.statement || ''}${art.assertedBy ? ` [Asserted by: ${art.assertedBy}]` : ""}`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_assertion_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Assertion",
+            content,
+            isActive: true,
+            category: "Assertion",
+            citations: Array.isArray(art.citations) ? art.citations : art.citations ? [art.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Assertion ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
     // 2. Assumptions
     if (Array.isArray(rec.assumptions)) {
-      rec.assumptions.forEach((ass, idx) => {
-        const source = formatCitationSource(ass.citations?.[0]);
-        const content = `${ass.statement}${ass.context ? ` [Context: ${ass.context}]` : ""}`;
-        extractedFromRec.push({
-          id: `item_assumption_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "Assumption",
-          content,
-          isActive: true,
-          category: "Assumption",
-          citations: ass.citations,
-          embedding: getDeterministicPseudoEmbedding(`${source} Assumption ${content}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.assumptions.forEach((ass: any, idx: number) => {
+        const source = formatCitationSource(ass.citations);
+        const content = `${ass.statement || ''}${ass.context ? ` [Context: ${ass.context}]` : ""}`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_assumption_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Assumption",
+            content,
+            isActive: true,
+            category: "Assumption",
+            citations: Array.isArray(ass.citations) ? ass.citations : ass.citations ? [ass.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Assumption ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
     // 3. Constraints
     if (Array.isArray(rec.constraints)) {
-      rec.constraints.forEach((con, idx) => {
-        const source = formatCitationSource(con.citations?.[0]);
-        const content = `${con.constraint}${con.constraintType ? ` [Type: ${con.constraintType}]` : ""}`;
-        extractedFromRec.push({
-          id: `item_constraint_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "Constraint",
-          content,
-          isActive: true,
-          category: con.constraintType || "Constraint",
-          citations: con.citations,
-          embedding: getDeterministicPseudoEmbedding(`${source} Constraint ${content}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.constraints.forEach((con: any, idx: number) => {
+        const source = formatCitationSource(con.citations);
+        const content = `${con.constraint || ''}${con.constraintType ? ` [Type: ${con.constraintType}]` : ""}`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_constraint_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Constraint",
+            content,
+            isActive: true,
+            category: con.constraintType || "Constraint",
+            citations: Array.isArray(con.citations) ? con.citations : con.citations ? [con.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Constraint ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
     // 4. Facts
     if (Array.isArray(rec.facts)) {
-      rec.facts.forEach((fact, idx) => {
-        const source = formatCitationSource(fact.citations?.[0]);
-        extractedFromRec.push({
-          id: `item_fact_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "Fact",
-          content: fact.statement,
-          isActive: true,
-          category: fact.category || "Fact",
-          citations: fact.citations,
-          embedding: getDeterministicPseudoEmbedding(`${source} Fact ${fact.statement}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.facts.forEach((fact: any, idx: number) => {
+        const source = formatCitationSource(fact.citations);
+        const content = fact.statement || '';
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_fact_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Fact",
+            content,
+            isActive: true,
+            category: fact.category || "Fact",
+            citations: Array.isArray(fact.citations) ? fact.citations : fact.citations ? [fact.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Fact ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
     // 5. Expectations
     if (Array.isArray(rec.expectations)) {
-      rec.expectations.forEach((exp, idx) => {
-        const source = formatCitationSource(exp.citations?.[0]);
-        const content = `${exp.outcome}${exp.targetTimeline ? ` [Timeline: ${exp.targetTimeline}]` : ""}`;
-        extractedFromRec.push({
-          id: `item_expectation_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "Expectation",
-          content,
-          isActive: true,
-          category: "Expectation",
-          citations: exp.citations,
-          embedding: getDeterministicPseudoEmbedding(`${source} Expectation ${content}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.expectations.forEach((exp: any, idx: number) => {
+        const source = formatCitationSource(exp.citations);
+        const content = `${exp.outcome || ''}${exp.targetTimeline ? ` [Timeline: ${exp.targetTimeline}]` : ""}`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_expectation_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Expectation",
+            content,
+            isActive: true,
+            category: "Expectation",
+            citations: Array.isArray(exp.citations) ? exp.citations : exp.citations ? [exp.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Expectation ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
     // 6. Key Data Points
     if (Array.isArray(rec.keyDataPoints)) {
-      rec.keyDataPoints.forEach((dp, idx) => {
-        const source = formatCitationSource(dp.citation);
-        const content = `${dp.metric}: ${dp.value}${dp.unit ? ` ${dp.unit}` : ""}${dp.context ? ` (${dp.context})` : ""}`;
-        extractedFromRec.push({
-          id: `item_datapoint_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
-          documentId: docId,
-          source,
-          flag: "DataPoint",
-          content,
-          isActive: true,
-          category: "DataPoint",
-          citations: dp.citation ? [dp.citation] : undefined,
-          embedding: getDeterministicPseudoEmbedding(`${source} DataPoint ${content}`),
-          updatedAt: new Date().toLocaleDateString()
-        });
+      rec.keyDataPoints.forEach((dp: any, idx: number) => {
+        const source = formatCitationSource(dp.citation || dp.citations);
+        const content = `${dp.metric || 'Metric'}: ${dp.value || ''}${dp.unit ? ` ${dp.unit}` : ""}${dp.context ? ` (${dp.context})` : ""}`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_datapoint_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "DataPoint",
+            content,
+            isActive: true,
+            category: "DataPoint",
+            citations: Array.isArray(dp.citation) ? dp.citation : dp.citation ? [dp.citation] : Array.isArray(dp.citations) ? dp.citations : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} DataPoint ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
+      });
+    }
+
+    // 7. Main Themes (if present in extraction schema)
+    if (Array.isArray(rec.mainThemes)) {
+      rec.mainThemes.forEach((theme: any, idx: number) => {
+        const source = formatCitationSource(theme.citations);
+        const content = `${theme.title || 'Theme'}: ${theme.summary || ''}${
+          Array.isArray(theme.keyTakeaways) && theme.keyTakeaways.length > 0
+            ? ` [Takeaways: ${theme.keyTakeaways.join('; ')}]`
+            : ''
+        }`;
+        if (content.trim()) {
+          extractedFromRec.push({
+            id: `item_theme_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`,
+            documentId: docId,
+            source,
+            flag: "Assertion",
+            content,
+            isActive: true,
+            category: "Theme",
+            citations: Array.isArray(theme.citations) ? theme.citations : theme.citations ? [theme.citations] : undefined,
+            embedding: getDeterministicPseudoEmbedding(`${source} Theme ${content}`),
+            updatedAt: new Date().toLocaleDateString()
+          });
+        }
       });
     }
 
@@ -389,13 +434,11 @@ export function ingestDocumentExtractionRecordJSON(
 
     if (existingDocIdx >= 0) {
       updatedDocs[existingDocIdx] = libDoc;
-      // Remove previous items from this doc
       const filteredOldItems = updatedItems.filter((i) => i.documentId !== docId);
-      updatedItems.length = 0;
-      updatedItems.push(...filteredOldItems, ...extractedFromRec);
+      updatedItems = [...filteredOldItems, ...extractedFromRec];
     } else {
       updatedDocs.push(libDoc);
-      updatedItems.push(...extractedFromRec);
+      updatedItems = updatedItems.concat(extractedFromRec);
     }
 
     countAdded += extractedFromRec.length;
